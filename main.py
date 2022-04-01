@@ -5,6 +5,7 @@ import os
 
 WIDTH = 1280
 HEIGHT = 720
+PLAYZONE_WIDTH = 720
 FPS = 60
 
 BLACK = (0, 0, 0)
@@ -18,15 +19,27 @@ clock = pg.time.Clock()
 
 game_folder = os.path.dirname(__file__)
 print(game_folder)
-img_folder = os.path.join(game_folder, 'img')
+assets_folder = os.path.join(game_folder, 'assets')
+img_folder = os.path.join(assets_folder, 'img')
+fonts_folder = os.path.join(assets_folder, 'fonts')
+snd_folder = os.path.join(assets_folder, 'snd')
+
 player_img = pg.image.load(os.path.join(img_folder, 'starship.png')).convert()
-player_img = pg.transform.scale(player_img, (128, 128))
+player_img = pg.transform.scale(player_img, (100, 100))
+
 meteor_img = pg.image.load(os.path.join(img_folder, 'meteor.png')).convert()
 bullet_img = pg.image.load(os.path.join(img_folder, 'bullet.png')).convert()
+
 bg_img = pg.image.load(os.path.join(img_folder, 'background.png')).convert()
 bg_rect = bg_img.get_rect()
 bg_rect.centery = 0
-font_name = pg.font.match_font('arial')
+
+expl_sounds = []
+for snd in ['expl1.wav', 'expl2.wav']:
+    expl_sounds.append(pg.mixer.Sound(os.path.join(snd_folder, snd)))
+shoot_snd = pg.mixer.Sound(os.path.join(snd_folder, 'shoot.wav'))
+heal_snd = pg.mixer.Sound(os.path.join(snd_folder, 'heal.wav'))
+pwrup_snd = pg.mixer.Sound(os.path.join(snd_folder, 'pwrup.wav'))
 
 explosion_anim = {}
 explosion_anim['large'] = []
@@ -49,7 +62,7 @@ class Player(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.radius = int((self.rect.width * 0.6)/2)
         # pg.draw.circle(self.image, WHITE, self.rect.center, self.radius)
-        self.rect.centerx = WIDTH / 2
+        self.rect.centerx = PLAYZONE_WIDTH / 2
         self.rect.bottom = HEIGHT - 20
         self.speedx = 0
         self.speedy = 0
@@ -82,8 +95,8 @@ class Player(pg.sprite.Sprite):
         if self.rect.left < 0:
             self.rect.left = 0
 
-        if self.rect.right > WIDTH:
-            self.rect.right = WIDTH
+        if self.rect.right > PLAYZONE_WIDTH:
+            self.rect.right = PLAYZONE_WIDTH
 
         if self.rect.bottom > HEIGHT:
             self.rect.bottom = HEIGHT
@@ -98,6 +111,7 @@ class Player(pg.sprite.Sprite):
             bullet = Bullet(self.rect.centerx, self.rect.top)
             all_sprites.add(bullet)
             bullets.add(bullet)
+            shoot_snd.play()
 
 
 class Mob(pg.sprite.Sprite):
@@ -109,7 +123,7 @@ class Mob(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.radius = int((self.rect.width * 0.85) / 2)
         # pg.draw.circle(self.image, BLACK, self.rect.center, self.radius)
-        self.rect.x = random.randrange(WIDTH - self.rect.width)
+        self.rect.x = random.randrange(PLAYZONE_WIDTH - self.rect.width)
         self.rect.y = random.randrange(-100, -40)
         self.speedy = random.randrange(4, 10)
         self.rotation = 0
@@ -120,7 +134,7 @@ class Mob(pg.sprite.Sprite):
         self.rotate()
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
-            self.rect.x = random.randrange(WIDTH - self.rect.width)
+            self.rect.x = random.randrange(PLAYZONE_WIDTH - self.rect.width)
             self.rect.y = random.randrange(-100, -40)
             self.speedy = random.randrange(4, 10)
 
@@ -152,10 +166,10 @@ class Bullet(pg.sprite.Sprite):
             self.kill()
 
 def draw_text(surf, text, size, x, y):
-    font = pg.font.Font(font_name, size)
+    font = pg.font.Font(os.path.join(fonts_folder, 'OutlinePixel7.ttf'), size)
     text_surface = font.render(text, True, WHITE)
     text_rect = text_surface.get_rect()
-    text_rect.midtop = (x, y)
+    text_rect.topleft = (x, y)
     surf.blit(text_surface, text_rect)
 
 def new_mob():
@@ -169,8 +183,8 @@ def draw_health_bar(surf, x, y, pct):
     color = (0, 200, 0)
     if pct <= 30:
         color = (196, 0, 5)
-    BAR_LENGTH = 100
-    BAR_HEIGHT = 10
+    BAR_LENGTH = 520
+    BAR_HEIGHT = 26
     fill = (pct / 100) * BAR_LENGTH
     outline_rect = pg.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
     fill_rect = pg.Rect(x, y, fill, BAR_HEIGHT)
@@ -212,6 +226,7 @@ for i in range(8):
     new_mob()
 
 score = 0
+powerups = 0
 
 running = True
 while running:
@@ -223,6 +238,7 @@ while running:
         player.health -= 31
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
+        random.choice(expl_sounds).play()
         new_mob()
         if player.health <= 0:
             running = False
@@ -233,6 +249,7 @@ while running:
         score += 50 - hit.radius
         explosion = Explosion(hit.rect.center, 'large')
         all_sprites.add(explosion)
+        random.choice(expl_sounds).play()
         new_mob()
 
     for event in pg.event.get():
@@ -246,8 +263,10 @@ while running:
         bg_rect.centery = 0
     screen.blit(bg_img, bg_rect)
     all_sprites.draw(screen)
-    draw_text(screen, str(score), 18, WIDTH/2, 10)
-    draw_health_bar(screen, 5, 5, player.health)
+    draw_text(screen, "Счет: " + str(score), 52, PLAYZONE_WIDTH + 20, 20)
+    draw_text(screen, "Усиление: " + str(powerups), 52, PLAYZONE_WIDTH + 20, 72)
+    draw_text(screen, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98)
+    draw_health_bar(screen, PLAYZONE_WIDTH + 20, HEIGHT - 46, player.health)
     pg.display.flip()
 
 pg.quit()
