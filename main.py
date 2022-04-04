@@ -40,6 +40,8 @@ for snd in ['expl1.wav', 'expl2.wav']:
 shoot_snd = pg.mixer.Sound(os.path.join(snd_folder, 'shoot.wav'))
 heal_snd = pg.mixer.Sound(os.path.join(snd_folder, 'heal.wav'))
 pwrup_snd = pg.mixer.Sound(os.path.join(snd_folder, 'pwrup.wav'))
+alert_snd = pg.mixer.Sound(os.path.join(snd_folder, 'alert.wav'))
+pg.mixer.music.load(os.path.join(snd_folder, 'music.wav'))
 
 explosion_anim = {}
 explosion_anim['large'] = []
@@ -53,6 +55,13 @@ for i in range(9):
     img_small = pg.transform.scale(img, (41, 40))
     explosion_anim['large'].append(img_large)
     explosion_anim['small'].append(img_small)
+
+drops_img = {}
+drops_img['health'] = pg.image.load(os.path.join(img_folder, 'health.png')).convert()
+drops_img['up'] = pg.image.load(os.path.join(img_folder, 'up.png')).convert()
+
+score = 0
+powerups = 0
 
 class Player(pg.sprite.Sprite):
     def __init__(self):
@@ -69,6 +78,7 @@ class Player(pg.sprite.Sprite):
         self.health = 100
         self.shoot_delay = 250
         self.last_shot = pg.time.get_ticks()
+        self.dmg = 40
 
     def update(self):
         self.speedx = 0
@@ -111,6 +121,7 @@ class Player(pg.sprite.Sprite):
             bullet = Bullet(self.rect.centerx, self.rect.top)
             all_sprites.add(bullet)
             bullets.add(bullet)
+            shoot_snd.set_volume(0.5)
             shoot_snd.play()
 
 
@@ -129,14 +140,14 @@ class Mob(pg.sprite.Sprite):
         self.rotation = 0
         self.rotation_speed = random.randrange(-10, 10)
         self.last_update = pg.time.get_ticks()
+        self.health = 50 + int(0.1 * score)
 
     def update(self):
         self.rotate()
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
-            self.rect.x = random.randrange(PLAYZONE_WIDTH - self.rect.width)
-            self.rect.y = random.randrange(-100, -40)
-            self.speedy = random.randrange(4, 10)
+            self.kill()
+            new_mob()
 
     def rotate(self):
         now = pg.time.get_ticks()
@@ -149,6 +160,20 @@ class Mob(pg.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.center = old_center
 
+class Drop(pg.sprite.Sprite):
+    def __init__(self, x, y):
+        pg.sprite.Sprite.__init__(self)
+        self.type = random.choice(['health', 'up'])
+        self.image = drops_img[self.type]
+        self.image.set_colorkey(WHITE)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.speedy = 5
+
+    def update(self):
+        self.rect.y += self.speedy
+        if self.rect.top > HEIGHT:
+            self.kill()
 
 class Bullet(pg.sprite.Sprite):
     def __init__(self, x, y):
@@ -221,36 +246,61 @@ all_sprites.add(player)
 
 mobs = pg.sprite.Group()
 bullets = pg.sprite.Group()
+drops = pg.sprite.Group()
 
 for i in range(8):
     new_mob()
 
-score = 0
-powerups = 0
+pg.mixer.music.play(loops=-1)
 
 running = True
 while running:
     clock.tick(FPS)
     all_sprites.update()
 
-    hits_player = pg.sprite.spritecollide(player, mobs, True, pg.sprite.collide_circle)
-    for hit in hits_player:
+    hits = pg.sprite.spritecollide(player, mobs, True, pg.sprite.collide_circle)
+    for hit in hits:
         player.health -= 31
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
         random.choice(expl_sounds).play()
+        alert_snd.play()
         new_mob()
         if player.health <= 0:
             running = False
 
 
-    hits_mobs = pg.sprite.groupcollide(mobs, bullets, True, True)
-    for hit in hits_mobs:
-        score += 50 - hit.radius
-        explosion = Explosion(hit.rect.center, 'large')
-        all_sprites.add(explosion)
-        random.choice(expl_sounds).play()
-        new_mob()
+    hits = pg.sprite.groupcollide(mobs, bullets, False, True)
+    for hit in hits:
+        hit.health -= player.dmg
+        if hit.health <= 0:
+            explosion = Explosion(hit.rect.center, 'large')
+            all_sprites.add(explosion)
+            random.choice(expl_sounds).play()
+            hit.kill()
+            score += 50
+            new_mob()
+            if random.random() > 0.9:
+                drop = Drop(hit.rect.centerx, hit.rect.centery)
+                all_sprites.add(drop)
+                drops.add(drop)
+
+        if hit.health > 0:
+            explosion = Explosion(hit.rect.center, 'small')
+            all_sprites.add(explosion)
+            random.choice(expl_sounds).play()
+
+    hits = pg.sprite.spritecollide(player, drops, True)
+    for hit in hits:
+        if hit.type == 'health':
+            player.health += 33
+            if player.health >= 100:
+                player.health = 100
+            heal_snd.play()
+        if hit.type == 'up':
+            powerups += 1
+            pwrup_snd.play()
+            player.dmg += 40
 
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -264,7 +314,7 @@ while running:
     screen.blit(bg_img, bg_rect)
     all_sprites.draw(screen)
     draw_text(screen, "Счет: " + str(score), 52, PLAYZONE_WIDTH + 20, 20)
-    draw_text(screen, "Усиление: " + str(powerups), 52, PLAYZONE_WIDTH + 20, 72)
+    draw_text(screen, "Урон: " + str(player.dmg), 52, PLAYZONE_WIDTH + 20, 72)
     draw_text(screen, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98)
     draw_health_bar(screen, PLAYZONE_WIDTH + 20, HEIGHT - 46, player.health)
     pg.display.flip()
