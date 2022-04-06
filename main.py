@@ -25,10 +25,23 @@ fonts_folder = os.path.join(assets_folder, 'fonts')
 snd_folder = os.path.join(assets_folder, 'snd')
 
 player_img = pg.image.load(os.path.join(img_folder, 'starship.png')).convert()
-player_img = pg.transform.scale(player_img, (100, 100))
+player_img = pg.transform.scale(player_img, (96, 80))
+
+# enemy_img = pg.transform.scale(pg.image.load(os.path.join(group_folder, 'red.png')), (32, 32))
+enemy_img = []
+
+for i in range(3):
+    enemy_group = []
+    for j in range(3):
+        enemy_group.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'enemy' + str(i) + str(j) +'.png')), (50, 50)))
+
+    enemy_img.append(enemy_group)
 
 meteor_img = pg.image.load(os.path.join(img_folder, 'meteor.png')).convert()
-bullet_img = pg.image.load(os.path.join(img_folder, 'bullet.png')).convert()
+ebullet_img = pg.image.load(os.path.join(img_folder, 'ebullet.png')).convert()
+bullet_img = []
+for i in range(4):
+    bullet_img.append(pg.image.load(os.path.join(img_folder, 'bullet' + str(i) + '.png')).convert())
 
 bg_img = pg.image.load(os.path.join(img_folder, 'background.png')).convert()
 bg_rect = bg_img.get_rect()
@@ -37,6 +50,10 @@ bg_rect.centery = 0
 expl_sounds = []
 for snd in ['expl1.wav', 'expl2.wav']:
     expl_sounds.append(pg.mixer.Sound(os.path.join(snd_folder, snd)))
+
+for i in range(len(expl_sounds)):
+    expl_sounds[i].set_volume(0.5)
+
 shoot_snd = pg.mixer.Sound(os.path.join(snd_folder, 'shoot.wav'))
 heal_snd = pg.mixer.Sound(os.path.join(snd_folder, 'heal.wav'))
 pwrup_snd = pg.mixer.Sound(os.path.join(snd_folder, 'pwrup.wav'))
@@ -47,12 +64,12 @@ explosion_anim = {}
 explosion_anim['large'] = []
 explosion_anim['small'] = []
 
-for i in range(9):
-    filename = 'explosion' + str(i) + '.png'
+for i in range(7):
+    filename = 'expl' + str(i) + '.png'
     img = pg.image.load(os.path.join(img_folder, filename)).convert()
     img.set_colorkey(BLACK)
-    img_large = pg.transform.scale(img, (82, 80))
-    img_small = pg.transform.scale(img, (41, 40))
+    img_large = pg.transform.scale(img, (62, 62))
+    img_small = pg.transform.scale(img, (31, 31))
     explosion_anim['large'].append(img_large)
     explosion_anim['small'].append(img_small)
 
@@ -67,9 +84,9 @@ class Player(pg.sprite.Sprite):
     def __init__(self):
         pg.sprite.Sprite.__init__(self)
         self.image = player_img
-        self.image.set_colorkey(BLACK)
+        self.image.set_colorkey(WHITE)
         self.rect = self.image.get_rect()
-        self.radius = int((self.rect.width * 0.6)/2)
+        self.radius = int((self.rect.width * 0.75)/2)
         # pg.draw.circle(self.image, WHITE, self.rect.center, self.radius)
         self.rect.centerx = PLAYZONE_WIDTH / 2
         self.rect.bottom = HEIGHT - 20
@@ -118,14 +135,60 @@ class Player(pg.sprite.Sprite):
         now = pg.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
-            bullet = Bullet(self.rect.centerx, self.rect.top)
+
+            state = 0
+            if player.dmg >= 300:
+                state = 3
+            elif player.dmg >= 200:
+                state = 2
+            elif player.dmg >= 100:
+                state = 1
+
+
+            bullet = Bullet(self.rect.centerx, self.rect.top, state)
             all_sprites.add(bullet)
             bullets.add(bullet)
-            shoot_snd.set_volume(0.5)
+            shoot_snd.set_volume(0.25)
             shoot_snd.play()
 
 
-class Mob(pg.sprite.Sprite):
+class Enemy(pg.sprite.Sprite):
+    def __init__(self, x, y, type, color):
+        pg.sprite.Sprite.__init__(self)
+        self.image = enemy_img[type][color]
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.left = x
+        self.rect.bottom = -500
+        self.y = y
+        self.radius = int((self.rect.width * 0.85) / 2)
+        self.last_update = pg.time.get_ticks()
+        self.shoot_delay = 1000 - int(score * 0.05)
+        if self.shoot_delay <= 350:
+            self.shoot_delay = 350
+        self.health = 50 + int(0.15 * score)
+
+    def update(self):
+        if self.y - self.rect.top >= 5:
+            self.rect.top += 5
+        else:
+            self.rect.top = self.y
+
+        if self.rect.top == self.y:
+            self.shoot()
+
+    def shoot(self):
+        now = pg.time.get_ticks()
+        if now - self.last_update > self.shoot_delay:
+            self.last_update = now
+            if random.random() > 0.9:
+                ebullet = EnemyBullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(ebullet)
+                ebullets.add(ebullet)
+                shoot_snd.set_volume(0.25)
+                shoot_snd.play()
+
+class Meteor(pg.sprite.Sprite):
     def __init__(self):
         pg.sprite.Sprite.__init__(self)
         self.image_orig = meteor_img
@@ -147,7 +210,7 @@ class Mob(pg.sprite.Sprite):
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
             self.kill()
-            new_mob()
+            new_meteor()
 
     def rotate(self):
         now = pg.time.get_ticks()
@@ -176,10 +239,10 @@ class Drop(pg.sprite.Sprite):
             self.kill()
 
 class Bullet(pg.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, state):
         pg.sprite.Sprite.__init__(self)
-        self.image = bullet_img
-        self.image.set_colorkey(WHITE)
+        self.image = bullet_img[state]
+        self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.rect.bottom = y
         self.rect.centerx = x
@@ -190,6 +253,21 @@ class Bullet(pg.sprite.Sprite):
         if self.rect.bottom < 0:
             self.kill()
 
+class EnemyBullet(pg.sprite.Sprite):
+    def __init__(self, x, y):
+        pg.sprite.Sprite.__init__(self)
+        self.image = ebullet_img
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.bottom = y
+        self.rect.centerx = x
+        self.speedy = 5
+
+    def update(self):
+        self.rect.y += self.speedy
+        if self.rect.top > HEIGHT:
+            self.kill()
+
 def draw_text(surf, text, size, x, y):
     font = pg.font.Font(os.path.join(fonts_folder, 'OutlinePixel7.ttf'), size)
     text_surface = font.render(text, True, WHITE)
@@ -197,10 +275,15 @@ def draw_text(surf, text, size, x, y):
     text_rect.topleft = (x, y)
     surf.blit(text_surface, text_rect)
 
-def new_mob():
-    m = Mob()
+def new_meteor():
+    m = Meteor()
     all_sprites.add(m)
     mobs.add(m)
+
+def new_enemy(x, y, type, color):
+    e = Enemy(x, y, type, color)
+    all_sprites.add(e)
+    mobs.add(e)
 
 def draw_health_bar(surf, x, y, pct):
     if pct < 0:
@@ -246,10 +329,101 @@ all_sprites.add(player)
 
 mobs = pg.sprite.Group()
 bullets = pg.sprite.Group()
+ebullets = pg.sprite.Group()
 drops = pg.sprite.Group()
 
-for i in range(8):
-    new_mob()
+def build_lvl(lvl):
+    x = 25
+    y = 25
+    type = random.randrange(0, 3)
+    color = random.randrange(0, 3)
+    for i in lvl:
+        if i == '1':
+            new_enemy(x, y, type, color)
+        x += 72
+        if i == 'n':
+            y += 72
+            x = 25
+            type = random.randrange(0, 3)
+            color = (color + 1) % 3
+
+lvl1 = '011101110n' \
+      '111111111n' \
+      '011111110n' \
+      '001111100n' \
+      '000111000n' \
+      '000010000'
+
+lvl2 = '111111111n' \
+       '111111111n' \
+       '111111111'
+
+lvl3 = '101010101n' \
+       '010101010n' \
+       '101010101n' \
+       '010101010n' \
+       '101010101'
+
+lvl4 = '100010111n' \
+       '100010010n' \
+       '111110010n' \
+       '100010010n' \
+       '100010111'
+
+lvl5 = '011000110n' \
+       '100001001n' \
+       '111000111n' \
+       '100100001n' \
+       '011000110'
+
+lvl6 = '000111000n' \
+       '001101100n' \
+       '001000100n' \
+       '000111000n' \
+       '000111000'
+
+lvl7 = '000111000n' \
+       '111111111n' \
+       '011111110n' \
+       '001111100n' \
+       '001101100'
+
+lvl8 = '100000001n' \
+       '010000010n' \
+       '001000100n' \
+       '000101000n' \
+       '000010000'
+
+lvl9 = '111111111n' \
+       '000000001n' \
+       '111111111n' \
+       '100000000n' \
+       '111111111'
+
+lvl10 = '111111111n' \
+       '100000000n' \
+       '111111111n' \
+       '000000001n' \
+       '111111111'
+
+lvls = []
+lvls.append(lvl1)
+lvls.append(lvl2)
+lvls.append(lvl3)
+lvls.append(lvl4)
+lvls.append(lvl5)
+lvls.append(lvl6)
+lvls.append(lvl7)
+lvls.append(lvl8)
+lvls.append(lvl9)
+lvls.append(lvl10)
+
+build_lvl(lvl4)
+
+# for i in range(8):
+#     new_meteor()
+
+# new_enemy(50, 50)
 
 pg.mixer.music.play(loops=-1)
 
@@ -265,7 +439,7 @@ while running:
         all_sprites.add(explosion)
         random.choice(expl_sounds).play()
         alert_snd.play()
-        new_mob()
+        # new_meteor()
         if player.health <= 0:
             running = False
 
@@ -278,9 +452,9 @@ while running:
             all_sprites.add(explosion)
             random.choice(expl_sounds).play()
             hit.kill()
-            score += 50
-            new_mob()
-            if random.random() > 0.9:
+            score += 20
+            # new_meteor()
+            if random.random() > 0.85:
                 drop = Drop(hit.rect.centerx, hit.rect.centery)
                 all_sprites.add(drop)
                 drops.add(drop)
@@ -289,6 +463,16 @@ while running:
             explosion = Explosion(hit.rect.center, 'small')
             all_sprites.add(explosion)
             random.choice(expl_sounds).play()
+
+    hits = pg.sprite.spritecollide(player, ebullets, True, pg.sprite.collide_circle)
+    for hit in hits:
+        player.health -= 31
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
+        random.choice(expl_sounds).play()
+        alert_snd.play()
+        if player.health <= 0:
+            running = False
 
     hits = pg.sprite.spritecollide(player, drops, True)
     for hit in hits:
@@ -301,6 +485,10 @@ while running:
             powerups += 1
             pwrup_snd.play()
             player.dmg += 40
+
+    if not bool(mobs):
+        lvl = random.randrange(0, len(lvls))
+        build_lvl(lvls[lvl])
 
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -320,4 +508,3 @@ while running:
     pg.display.flip()
 
 pg.quit()
-
