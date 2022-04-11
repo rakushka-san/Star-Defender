@@ -1,6 +1,7 @@
 import pygame as pg
 import random
 import os
+import json
 
 
 WIDTH = 1280
@@ -10,6 +11,7 @@ FPS = 60
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
 
 pg.init()
 pg.mixer.init()
@@ -18,7 +20,6 @@ pg.display.set_caption("Star Defender")
 clock = pg.time.Clock()
 
 game_folder = os.path.dirname(__file__)
-print(game_folder)
 assets_folder = os.path.join(game_folder, 'assets')
 img_folder = os.path.join(assets_folder, 'img')
 fonts_folder = os.path.join(assets_folder, 'fonts')
@@ -27,38 +28,13 @@ snd_folder = os.path.join(assets_folder, 'snd')
 player_img = pg.image.load(os.path.join(img_folder, 'starship.png')).convert()
 player_img = pg.transform.scale(player_img, (96, 80))
 
-# enemy_img = pg.transform.scale(pg.image.load(os.path.join(group_folder, 'red.png')), (32, 32))
-enemy_img = []
-
-for i in range(3):
-    enemy_group = []
-    for j in range(3):
-        enemy_group.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'enemy' + str(i) + str(j) +'.png')), (50, 50)))
-
-    enemy_img.append(enemy_group)
-
-meteor_img = pg.image.load(os.path.join(img_folder, 'meteor.png')).convert()
-ebullet_img = pg.image.load(os.path.join(img_folder, 'ebullet.png')).convert()
-bullet_img = []
-for i in range(4):
-    bullet_img.append(pg.image.load(os.path.join(img_folder, 'bullet' + str(i) + '.png')).convert())
-
 bg_img = pg.image.load(os.path.join(img_folder, 'background.png')).convert()
 bg_rect = bg_img.get_rect()
 bg_rect.centery = 0
 
-expl_sounds = []
-for snd in ['expl1.wav', 'expl2.wav']:
-    expl_sounds.append(pg.mixer.Sound(os.path.join(snd_folder, snd)))
-
-for i in range(len(expl_sounds)):
-    expl_sounds[i].set_volume(0.5)
-
-shoot_snd = pg.mixer.Sound(os.path.join(snd_folder, 'shoot.wav'))
-heal_snd = pg.mixer.Sound(os.path.join(snd_folder, 'heal.wav'))
-pwrup_snd = pg.mixer.Sound(os.path.join(snd_folder, 'pwrup.wav'))
-alert_snd = pg.mixer.Sound(os.path.join(snd_folder, 'alert.wav'))
-pg.mixer.music.load(os.path.join(snd_folder, 'music.wav'))
+drops_img = {}
+drops_img['health'] = pg.image.load(os.path.join(img_folder, 'health.png')).convert()
+drops_img['up'] = pg.image.load(os.path.join(img_folder, 'up.png')).convert()
 
 explosion_anim = {}
 explosion_anim['large'] = []
@@ -73,12 +49,123 @@ for i in range(7):
     explosion_anim['large'].append(img_large)
     explosion_anim['small'].append(img_small)
 
-drops_img = {}
-drops_img['health'] = pg.image.load(os.path.join(img_folder, 'health.png')).convert()
-drops_img['up'] = pg.image.load(os.path.join(img_folder, 'up.png')).convert()
+ebullet_img = pg.image.load(os.path.join(img_folder, 'ebullet.png')).convert()
+bullet_img = []
+for i in range(4):
+    bullet_img.append(pg.image.load(os.path.join(img_folder, 'bullet' + str(i) + '.png')).convert())
 
+asteroid_img = []
+for i in range(4):
+    asteroid_img.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'asteroid' + str(i) + '.png')).convert(), (20 * (i + 1), 20 * (i + 1))))
+
+enemy_img = []
+
+for i in range(3):
+    enemy_group = []
+    for j in range(3):
+        enemy_group.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'enemy' + str(i) + str(j) +'.png')).convert(), (50, 50)))
+
+    enemy_img.append(enemy_group)
+
+select_snd = pg.mixer.Sound(os.path.join(snd_folder, 'select.wav'))
+shoot_snd = pg.mixer.Sound(os.path.join(snd_folder, 'shoot.wav'))
+heal_snd = pg.mixer.Sound(os.path.join(snd_folder, 'heal.wav'))
+pwrup_snd = pg.mixer.Sound(os.path.join(snd_folder, 'pwrup.wav'))
+alert_snd = pg.mixer.Sound(os.path.join(snd_folder, 'alert.wav'))
+menu_music = pg.mixer.Sound(os.path.join(snd_folder, 'menu_music.wav'))
+music = pg.mixer.Sound(os.path.join(snd_folder, 'music.wav'))
+
+expl_sounds = []
+for snd in ['expl1.wav', 'expl2.wav']:
+    expl_sounds.append(pg.mixer.Sound(os.path.join(snd_folder, snd)))
+
+lvl0 = 'asteroid'
+
+lvl1 = '011101110n' \
+      '111111111n' \
+      '011111110n' \
+      '001111100n' \
+      '000111000n' \
+      '000010000'
+
+lvl2 = '111111111n' \
+       '111111111n' \
+       '111111111'
+
+lvl3 = '101010101n' \
+       '010101010n' \
+       '101010101n' \
+       '010101010n' \
+       '101010101'
+
+lvl4 = '100010111n' \
+       '100010010n' \
+       '111110010n' \
+       '100010010n' \
+       '100010111'
+
+lvl5 = '011000110n' \
+       '100001001n' \
+       '111000111n' \
+       '100100001n' \
+       '011000110'
+
+lvl6 = '000111000n' \
+       '001101100n' \
+       '001000100n' \
+       '000111000n' \
+       '000111000'
+
+lvl7 = '000111000n' \
+       '111111111n' \
+       '011111110n' \
+       '001111100n' \
+       '001101100'
+
+lvl8 = '100000001n' \
+       '010000010n' \
+       '001000100n' \
+       '000101000n' \
+       '000010000'
+
+lvl9 = '111111111n' \
+       '000000001n' \
+       '111111111n' \
+       '100000000n' \
+       '111111111'
+
+lvl10 = '111111111n' \
+       '100000000n' \
+       '111111111n' \
+       '000000001n' \
+       '111111111'
+
+lvls = []
+lvls.append(lvl0)
+lvls.append(lvl1)
+lvls.append(lvl2)
+lvls.append(lvl3)
+lvls.append(lvl4)
+lvls.append(lvl5)
+lvls.append(lvl6)
+lvls.append(lvl7)
+lvls.append(lvl8)
+lvls.append(lvl9)
+lvls.append(lvl10)
+
+data = {
+    'volume': 100,
+    'data': []
+}
+
+# [dict{'name': 'player', 'score': 0}]
+
+name = 'player'
 score = 0
 powerups = 0
+volume = 100
+
+##########################################
 
 class Player(pg.sprite.Sprite):
     def __init__(self):
@@ -148,7 +235,6 @@ class Player(pg.sprite.Sprite):
             bullet = Bullet(self.rect.centerx, self.rect.top, state)
             all_sprites.add(bullet)
             bullets.add(bullet)
-            shoot_snd.set_volume(0.25)
             shoot_snd.play()
 
 
@@ -167,6 +253,7 @@ class Enemy(pg.sprite.Sprite):
         if self.shoot_delay <= 350:
             self.shoot_delay = 350
         self.health = 50 + int(0.15 * score)
+        self.dmg = 30
 
     def update(self):
         if self.y - self.rect.top >= 5:
@@ -185,32 +272,32 @@ class Enemy(pg.sprite.Sprite):
                 ebullet = EnemyBullet(self.rect.centerx, self.rect.top)
                 all_sprites.add(ebullet)
                 ebullets.add(ebullet)
-                shoot_snd.set_volume(0.25)
                 shoot_snd.play()
 
-class Meteor(pg.sprite.Sprite):
-    def __init__(self):
+class Asteroid(pg.sprite.Sprite):
+    def __init__(self, k):
         pg.sprite.Sprite.__init__(self)
-        self.image_orig = meteor_img
+        self.type = random.randrange(0, 4)
+        self.image_orig = asteroid_img[self.type]
         self.image_orig.set_colorkey(WHITE)
         self.image = self.image_orig.copy()
         self.rect = self.image.get_rect()
         self.radius = int((self.rect.width * 0.85) / 2)
         # pg.draw.circle(self.image, BLACK, self.rect.center, self.radius)
         self.rect.x = random.randrange(PLAYZONE_WIDTH - self.rect.width)
-        self.rect.y = random.randrange(-100, -40)
-        self.speedy = random.randrange(4, 10)
+        self.rect.y = - (500 + 400 * k + random.randrange(20, 200))
+        self.speedy = random.randrange(4, 6)
         self.rotation = 0
         self.rotation_speed = random.randrange(-10, 10)
         self.last_update = pg.time.get_ticks()
-        self.health = 50 + int(0.1 * score)
+        self.health = 25 * self.type + int(score * 0.05)
+        self.dmg = 10 * (self.type + 1)
 
     def update(self):
-        self.rotate()
+        # self.rotate()
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
             self.kill()
-            new_meteor()
 
     def rotate(self):
         now = pg.time.get_ticks()
@@ -268,37 +355,6 @@ class EnemyBullet(pg.sprite.Sprite):
         if self.rect.top > HEIGHT:
             self.kill()
 
-def draw_text(surf, text, size, x, y):
-    font = pg.font.Font(os.path.join(fonts_folder, 'OutlinePixel7.ttf'), size)
-    text_surface = font.render(text, True, WHITE)
-    text_rect = text_surface.get_rect()
-    text_rect.topleft = (x, y)
-    surf.blit(text_surface, text_rect)
-
-def new_meteor():
-    m = Meteor()
-    all_sprites.add(m)
-    mobs.add(m)
-
-def new_enemy(x, y, type, color):
-    e = Enemy(x, y, type, color)
-    all_sprites.add(e)
-    mobs.add(e)
-
-def draw_health_bar(surf, x, y, pct):
-    if pct < 0:
-        pct = 0
-    color = (0, 200, 0)
-    if pct <= 30:
-        color = (196, 0, 5)
-    BAR_LENGTH = 520
-    BAR_HEIGHT = 26
-    fill = (pct / 100) * BAR_LENGTH
-    outline_rect = pg.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
-    fill_rect = pg.Rect(x, y, fill, BAR_HEIGHT)
-    pg.draw.rect(surf, color, fill_rect)
-    pg.draw.rect(surf, color, outline_rect, 2)
-
 class Explosion(pg.sprite.Sprite):
     def __init__(self, center, size):
         pg.sprite.Sprite.__init__(self)
@@ -323,14 +379,39 @@ class Explosion(pg.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = center
 
-all_sprites = pg.sprite.Group()
-player = Player()
-all_sprites.add(player)
+def draw_text(surf, color, text, size, x, y, pos):
+    font = pg.font.Font(os.path.join(fonts_folder, 'OutlinePixel7.ttf'), size)
+    text_surface = font.render(text, True, color)
+    text_rect = text_surface.get_rect()
+    if pos == 'topleft':
+        text_rect.topleft = (x, y)
+    elif pos == 'center':
+        text_rect.center = (x, y)
+    surf.blit(text_surface, text_rect)
 
-mobs = pg.sprite.Group()
-bullets = pg.sprite.Group()
-ebullets = pg.sprite.Group()
-drops = pg.sprite.Group()
+def new_asteroid(k):
+    m = Asteroid(k)
+    all_sprites.add(m)
+    mobs.add(m)
+
+def new_enemy(x, y, type, color):
+    e = Enemy(x, y, type, color)
+    all_sprites.add(e)
+    mobs.add(e)
+
+def draw_health_bar(surf, x, y, pct):
+    if pct < 0:
+        pct = 0
+    color = (0, 200, 0)
+    if pct <= 30:
+        color = (196, 0, 5)
+    BAR_LENGTH = 520
+    BAR_HEIGHT = 26
+    fill = (pct / 100) * BAR_LENGTH
+    outline_rect = pg.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
+    fill_rect = pg.Rect(x, y, fill, BAR_HEIGHT)
+    pg.draw.rect(surf, color, fill_rect)
+    pg.draw.rect(surf, color, outline_rect, 2)
 
 def build_lvl(lvl):
     x = 25
@@ -347,102 +428,297 @@ def build_lvl(lvl):
             type = random.randrange(0, 3)
             color = (color + 1) % 3
 
-lvl1 = '011101110n' \
-      '111111111n' \
-      '011111110n' \
-      '001111100n' \
-      '000111000n' \
-      '000010000'
+def asteroid_lvl():
+    count = 0
+    while count < 16:
+        for i in range(12):
+            new_asteroid(count)
+        count += 1
 
-lvl2 = '111111111n' \
-       '111111111n' \
-       '111111111'
 
-lvl3 = '101010101n' \
-       '010101010n' \
-       '101010101n' \
-       '010101010n' \
-       '101010101'
+def update_master_volume():
+    global volume
+    expl_volume = 0.5
+    shoot_volume = 0.25
+    select_volume = 0.5
 
-lvl4 = '100010111n' \
-       '100010010n' \
-       '111110010n' \
-       '100010010n' \
-       '100010111'
+    alert_snd.set_volume(volume/100)
+    heal_snd.set_volume(volume/100)
+    pwrup_snd.set_volume(volume/100)
+    shoot_snd.set_volume(shoot_volume * volume/100)
+    select_snd.set_volume(select_volume * volume/100)
+    for i in range(len(expl_sounds)):
+        expl_sounds[i].set_volume(expl_volume * volume/100)
+    pg.mixer.music.set_volume(volume/100)
 
-lvl5 = '011000110n' \
-       '100001001n' \
-       '111000111n' \
-       '100100001n' \
-       '011000110'
+def show_gameover():
+    options = ['Да', 'Нет']
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    draw_text(screen, WHITE, "Ваш счет: " + str(score), 36, WIDTH / 2, HEIGHT / 4 + 100, 'center')
+    draw_text(screen, WHITE, "Сохранить?", 36, WIDTH / 2, HEIGHT / 4 + 150, 'center')
+    draw_text(screen, GREEN, options[0], 36, WIDTH / 2 - 100, HEIGHT / 4 + 200, 'center')
+    draw_text(screen, WHITE, options[1], 36, WIDTH / 2 + 100, HEIGHT / 4 + 200, 'center')
 
-lvl6 = '000111000n' \
-       '001101100n' \
-       '001000100n' \
-       '000111000n' \
-       '000111000'
+    pg.display.flip()
 
-lvl7 = '000111000n' \
-       '111111111n' \
-       '011111110n' \
-       '001111100n' \
-       '001101100'
+    option = 0
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    match options[option]:
+                        case 'Да':
+                            select_snd.play()
+                            # cохранение
+                        case 'Нет':
+                            select_snd.play()
+                            waiting = False
 
-lvl8 = '100000001n' \
-       '010000010n' \
-       '001000100n' \
-       '000101000n' \
-       '000010000'
+                if keystate[pg.K_a]:
+                    if option == 1:
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2 + 100, HEIGHT / 4 + 200, 'center')
+                        draw_text(screen, GREEN, options[option - 1], 36, WIDTH / 2 - 100, HEIGHT / 4 + 200, 'center')
 
-lvl9 = '111111111n' \
-       '000000001n' \
-       '111111111n' \
-       '100000000n' \
-       '111111111'
+                    option = 0
 
-lvl10 = '111111111n' \
-       '100000000n' \
-       '111111111n' \
-       '000000001n' \
-       '111111111'
+                    pg.display.flip()
+                    select_snd.play()
 
-lvls = []
-lvls.append(lvl1)
-lvls.append(lvl2)
-lvls.append(lvl3)
-lvls.append(lvl4)
-lvls.append(lvl5)
-lvls.append(lvl6)
-lvls.append(lvl7)
-lvls.append(lvl8)
-lvls.append(lvl9)
-lvls.append(lvl10)
+                if keystate[pg.K_d]:
+                    if option == 0:
+                        draw_text(screen, GREEN, options[option + 1], 36, WIDTH / 2 + 100, HEIGHT / 4 + 200, 'center')
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2 - 100, HEIGHT / 4 + 200, 'center')
 
-build_lvl(lvl4)
+                    option = 1
 
-# for i in range(8):
-#     new_meteor()
+                    pg.display.flip()
+                    select_snd.play()
 
-# new_enemy(50, 50)
+def show_options():
+    global volume
+    options = ['Громкость: ', 'Сбросить рекорды', 'Назад']
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    draw_text(screen, GREEN, options[len(options) - 1], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
+    for i in range(0, len(options) - 1):
+        if options[i] == 'Громкость: ':
+            draw_text(screen, WHITE, options[i] + str(volume) , 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+        else:
+            draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
 
-pg.mixer.music.play(loops=-1)
+    pg.display.flip()
 
+    option = len(options) - 1
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    select_snd.play()
+                    match options[option]:
+                        case 'Сбросить рекорды':
+                            pass
+                        case 'Назад':
+                            waiting = False
+
+                if keystate[pg.K_a] and option == 0:
+                    volume -= 10
+                    if volume < 0:
+                        volume = 0
+
+                    update_master_volume()
+
+                    screen.blit(surf, surf_rect)
+                    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                    draw_text(screen, GREEN, options[option] + str(volume) , 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    for i in range(1, len(options)):
+                        draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+                if keystate[pg.K_d] and option == 0:
+                    volume += 10
+                    if volume > 100:
+                        volume = 100
+
+                    update_master_volume()
+
+                    screen.blit(surf, surf_rect)
+                    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                    draw_text(screen, GREEN, options[option] + str(volume), 36, WIDTH / 2,
+                              HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    for i in range(1, len(options)):
+                        draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+                if keystate[pg.K_s]:
+                    if options[option] == 'Громкость: ':
+                        draw_text(screen, WHITE, options[option] + str(volume), 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    else:
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option += 1
+                    if option > len(options) - 1:
+                        option = len(options) - 1
+                    draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+                if keystate[pg.K_w]:
+                    draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option -= 1
+                    if option < 0:
+                        option = 0
+                    if options[option] == 'Громкость: ':
+                        draw_text(screen, GREEN, options[option] + str(volume), 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    else:
+                        draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+def show_menu():
+    options = ['Играть', 'Настройки', 'Выход']
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    draw_text(screen, GREEN, options[0], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50, 'center')
+    for i in range(1, len(options)):
+        draw_text(screen, WHITE, options[i], 36, WIDTH/2, HEIGHT/4 + 100 + 50*(i + 1), 'center')
+
+    pg.display.flip()
+
+    option = 0
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    match options[option]:
+                        case 'Играть':
+                            select_snd.play()
+                            waiting = False
+                        case 'Настройки':
+                            show_options()
+                            screen.blit(surf, surf_rect)
+                            option = 0
+                            draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                            draw_text(screen, GREEN, options[0], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50, 'center')
+                            for i in range(1, len(options)):
+                                draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1),
+                                          'center')
+                            pg.display.flip()
+                            select_snd.play()
+
+                        case 'Выход':
+                            select_snd.play()
+                            waiting = False
+                            pg.quit()
+
+                if keystate[pg.K_s]:
+                    draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option += 1
+                    if option > len(options) - 1:
+                        option = len(options) - 1
+                    draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+                if keystate[pg.K_w]:
+                    draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option -= 1
+                    if option < 0:
+                        option = 0
+                    draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
+
+update_master_volume()
+
+game_stop = True
 running = True
 while running:
+    if game_stop:
+        pg.mixer.music.stop()
+        pg.mixer.music = menu_music
+        pg.mixer.music.play(loops=-1)
+        update_master_volume()
+
+        show_menu()
+
+        all_sprites = pg.sprite.Group()
+        player = Player()
+        all_sprites.add(player)
+
+        mobs = pg.sprite.Group()
+        bullets = pg.sprite.Group()
+        ebullets = pg.sprite.Group()
+        drops = pg.sprite.Group()
+
+        pg.mixer.music.stop()
+        pg.mixer.music = music
+        pg.mixer.music.play(loops=-1)
+        update_master_volume()
+
+        build_lvl(lvl4)
+        score = 0
+        powerups = 0
+        game_stop = False
+
     clock.tick(FPS)
     all_sprites.update()
 
     hits = pg.sprite.spritecollide(player, mobs, True, pg.sprite.collide_circle)
+    for hit in hits:
+        player.health -= hit.dmg
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
+        random.choice(expl_sounds).play()
+        alert_snd.play()
+        if player.health <= 0:
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            random.choice(expl_sounds).play()
+            player.kill()
+
+    hits = pg.sprite.spritecollide(player, ebullets, True, pg.sprite.collide_circle)
     for hit in hits:
         player.health -= 31
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
         random.choice(expl_sounds).play()
         alert_snd.play()
-        # new_meteor()
         if player.health <= 0:
-            running = False
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            random.choice(expl_sounds).play()
+            player.kill()
 
+    if not player.alive() and not death_explosion.alive():
+        show_gameover()
+        game_stop = True
 
     hits = pg.sprite.groupcollide(mobs, bullets, False, True)
     for hit in hits:
@@ -453,7 +729,6 @@ while running:
             random.choice(expl_sounds).play()
             hit.kill()
             score += 20
-            # new_meteor()
             if random.random() > 0.85:
                 drop = Drop(hit.rect.centerx, hit.rect.centery)
                 all_sprites.add(drop)
@@ -463,16 +738,6 @@ while running:
             explosion = Explosion(hit.rect.center, 'small')
             all_sprites.add(explosion)
             random.choice(expl_sounds).play()
-
-    hits = pg.sprite.spritecollide(player, ebullets, True, pg.sprite.collide_circle)
-    for hit in hits:
-        player.health -= 31
-        explosion = Explosion(hit.rect.center, 'small')
-        all_sprites.add(explosion)
-        random.choice(expl_sounds).play()
-        alert_snd.play()
-        if player.health <= 0:
-            running = False
 
     hits = pg.sprite.spritecollide(player, drops, True)
     for hit in hits:
@@ -488,7 +753,10 @@ while running:
 
     if not bool(mobs):
         lvl = random.randrange(0, len(lvls))
-        build_lvl(lvls[lvl])
+        if lvl == 0:
+            asteroid_lvl()
+        else:
+            build_lvl(lvls[lvl])
 
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -501,9 +769,9 @@ while running:
         bg_rect.centery = 0
     screen.blit(bg_img, bg_rect)
     all_sprites.draw(screen)
-    draw_text(screen, "Счет: " + str(score), 52, PLAYZONE_WIDTH + 20, 20)
-    draw_text(screen, "Урон: " + str(player.dmg), 52, PLAYZONE_WIDTH + 20, 72)
-    draw_text(screen, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98)
+    draw_text(screen, WHITE,  "Счет: " + str(score), 52, PLAYZONE_WIDTH + 20, 20, 'topleft')
+    draw_text(screen, WHITE, "Урон: " + str(player.dmg), 52, PLAYZONE_WIDTH + 20, 72, 'topleft')
+    draw_text(screen, WHITE, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98, 'topleft')
     draw_health_bar(screen, PLAYZONE_WIDTH + 20, HEIGHT - 46, player.health)
     pg.display.flip()
 
