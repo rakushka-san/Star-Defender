@@ -1,3 +1,5 @@
+import time
+
 import pygame as pg
 import random
 import os
@@ -21,6 +23,7 @@ clock = pg.time.Clock()
 
 game_folder = os.path.dirname(__file__)
 assets_folder = os.path.join(game_folder, 'assets')
+user_folder =  os.path.join(game_folder, 'user')
 img_folder = os.path.join(assets_folder, 'img')
 fonts_folder = os.path.join(assets_folder, 'fonts')
 snd_folder = os.path.join(assets_folder, 'snd')
@@ -78,6 +81,10 @@ music = pg.mixer.Sound(os.path.join(snd_folder, 'music.wav'))
 expl_sounds = []
 for snd in ['expl1.wav', 'expl2.wav']:
     expl_sounds.append(pg.mixer.Sound(os.path.join(snd_folder, snd)))
+
+
+save_path = os.path.join(user_folder, 'save.txt')
+config_path = os.path.join(user_folder, 'config.txt')
 
 lvl0 = 'asteroid'
 
@@ -142,28 +149,34 @@ lvl10 = '111111111n' \
 
 lvls = []
 lvls.append(lvl0)
-lvls.append(lvl1)
-lvls.append(lvl2)
-lvls.append(lvl3)
-lvls.append(lvl4)
-lvls.append(lvl5)
-lvls.append(lvl6)
-lvls.append(lvl7)
-lvls.append(lvl8)
-lvls.append(lvl9)
-lvls.append(lvl10)
+# lvls.append(lvl1)
+# lvls.append(lvl2)
+# lvls.append(lvl3)
+# lvls.append(lvl4)
+# lvls.append(lvl5)
+# lvls.append(lvl6)
+# lvls.append(lvl7)
+# lvls.append(lvl8)
+# lvls.append(lvl9)
+# lvls.append(lvl10)
 
-data = {
-    'volume': 100,
-    'data': []
+data_elem = {
+    'name': 'player',
+    'score': 0
 }
 
-# [dict{'name': 'player', 'score': 0}]
-
-name = 'player'
+name = ''
 score = 0
 powerups = 0
-volume = 100
+
+with open(config_path) as config_file:
+    config = json.load(config_file)
+
+with open(save_path) as save_file:
+    save_data = json.load(save_file)
+
+volume = config['volume']
+controls = config['controls']
 
 ##########################################
 
@@ -174,7 +187,6 @@ class Player(pg.sprite.Sprite):
         self.image.set_colorkey(WHITE)
         self.rect = self.image.get_rect()
         self.radius = int((self.rect.width * 0.75)/2)
-        # pg.draw.circle(self.image, WHITE, self.rect.center, self.radius)
         self.rect.centerx = PLAYZONE_WIDTH / 2
         self.rect.bottom = HEIGHT - 20
         self.speedx = 0
@@ -191,16 +203,16 @@ class Player(pg.sprite.Sprite):
 
         keystate = pg.key.get_pressed()
 
-        if keystate[pg.K_w]:
+        if keystate[pg.key.key_code(controls['up'])]:
             self.speedy = -10
 
-        if keystate[pg.K_a]:
+        if keystate[pg.key.key_code(controls['left'])]:
             self.speedx = -10
 
-        if keystate[pg.K_s]:
+        if keystate[pg.key.key_code(controls['down'])]:
             self.speedy = 10
 
-        if keystate[pg.K_d]:
+        if keystate[pg.key.key_code(controls['right'])]:
             self.speedx = 10
 
         self.rect.x += self.speedx
@@ -283,32 +295,19 @@ class Asteroid(pg.sprite.Sprite):
         self.image = self.image_orig.copy()
         self.rect = self.image.get_rect()
         self.radius = int((self.rect.width * 0.85) / 2)
-        # pg.draw.circle(self.image, BLACK, self.rect.center, self.radius)
         self.rect.x = random.randrange(PLAYZONE_WIDTH - self.rect.width)
         self.rect.y = - (500 + 400 * k + random.randrange(20, 200))
         self.speedy = random.randrange(4, 6)
         self.rotation = 0
-        self.rotation_speed = random.randrange(-10, 10)
+        self.rotation_speed = random.randrange(-5, 5)
         self.last_update = pg.time.get_ticks()
         self.health = 25 * self.type + int(score * 0.05)
         self.dmg = 10 * (self.type + 1)
 
     def update(self):
-        # self.rotate()
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
             self.kill()
-
-    def rotate(self):
-        now = pg.time.get_ticks()
-        if now - self.last_update > 50:
-            self.last_update = now
-            self.rotation = (self.rotation + self.rotation_speed) % 360
-            new_image = pg.transform.rotate(self.image_orig, self.rotation)
-            old_center = self.rect.center
-            self.image = new_image
-            self.rect = self.image.get_rect()
-            self.rect.center = old_center
 
 class Drop(pg.sprite.Sprite):
     def __init__(self, x, y):
@@ -451,6 +450,66 @@ def update_master_volume():
         expl_sounds[i].set_volume(expl_volume * volume/100)
     pg.mixer.music.set_volume(volume/100)
 
+def show_save():
+    global name
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    draw_text(screen, WHITE, "Введите имя:", 36, WIDTH / 2, HEIGHT / 4 + 100, 'center')
+    draw_text(screen, WHITE, name, 36, WIDTH / 2, HEIGHT / 4 + 150, 'center')
+
+    pg.display.flip()
+
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        screen.blit(surf, surf_rect)
+        draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+        draw_text(screen, WHITE, "Введите имя:", 36, WIDTH / 2, HEIGHT / 4 + 100, 'center')
+        draw_text(screen, WHITE, name, 36, WIDTH / 2, HEIGHT / 4 + 150, 'center')
+        pg.display.flip()
+
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    select_snd.play()
+
+                    data_elem['name'] = name
+                    data_elem['score'] = score
+                    save_data['data'].append(data_elem)
+
+                    n = len(save_data['data'])
+                    for i in range(n - 1):
+                        for j in range(n - i - 1):
+                            if save_data['data'][j]['score'] < save_data['data'][j + 1]['score']:
+                                save_data['data'][j], save_data['data'][j + 1] = save_data['data'][j + 1], save_data['data'][j]
+
+                    with open(save_path, 'w') as save_file:
+                        json.dump(save_data, save_file)
+
+                    draw_text(screen, WHITE, "Сохранено!", 36, WIDTH / 2, HEIGHT * 3/4, 'center')
+                    pg.display.flip()
+
+                    start = pg.time.get_ticks()
+                    while True:
+                        now = pg.time.get_ticks()
+                        if now - start > 1000:
+                            break
+
+                    waiting = False
+                elif keystate[pg.K_BACKSPACE]:
+                    select_snd.play()
+                    name = name[:-1]
+                elif len(name) < 8:
+                    select_snd.play()
+                    name += event.unicode
+
+
 def show_gameover():
     options = ['Да', 'Нет']
     surf = pg.Surface((WIDTH, HEIGHT))
@@ -475,13 +534,10 @@ def show_gameover():
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
-                    match options[option]:
-                        case 'Да':
-                            select_snd.play()
-                            # cохранение
-                        case 'Нет':
-                            select_snd.play()
-                            waiting = False
+                    select_snd.play()
+                    if options[option] == 'Да':
+                        show_save()
+                    waiting = False
 
                 if keystate[pg.K_a]:
                     if option == 1:
@@ -503,9 +559,117 @@ def show_gameover():
                     pg.display.flip()
                     select_snd.play()
 
+def show_controls():
+    options = ['Вверх: ', 'Вниз: ', 'Влево: ', 'Вправо: ', 'Назад']
+    controls_names = ['up', 'down', 'left', 'right']
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    draw_text(screen, GREEN, options[len(options) - 1], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
+
+    for i in range(0, len(options) - 1):
+        draw_text(screen, WHITE, options[i] + controls[controls_names[i]], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+
+    pg.display.flip()
+
+    option = len(options) - 1
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    select_snd.play()
+                    if options[option] == 'Назад':
+                        waiting = False
+                    else:
+                        screen.blit(surf, surf_rect)
+                        draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                        draw_text(screen, WHITE, options[len(options) - 1], 36, WIDTH / 2,
+                                  HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
+
+                        for i in range(0, len(options) - 1):
+                            if i == option:
+                                continue
+                            draw_text(screen, WHITE, options[i] + controls[controls_names[i]], 36, WIDTH / 2,
+                                      HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+
+                        draw_text(screen, WHITE, options[option] + ' ', 36, WIDTH / 2,
+                                  HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+
+                        draw_text(screen, WHITE, "Нажмите клавишу...", 36, WIDTH / 2, HEIGHT - 100, 'center')
+                        pg.display.flip()
+
+                        waiting_key = True
+                        while waiting_key:
+                            clock.tick(FPS)
+                            for event in pg.event.get():
+                                if event.type == pg.QUIT:
+                                    pg.quit()
+                                if event.type == pg.KEYDOWN:
+                                    controls[controls_names[option]] = pg.key.name(event.key)
+                                    waiting_key = False
+
+                        config['controls'] = controls
+                        with open(config_path, 'w') as config_file:
+                            json.dump(config, config_file)
+
+                        screen.blit(surf, surf_rect)
+                        draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                        draw_text(screen, WHITE, options[len(options) - 1], 36, WIDTH / 2,
+                                  HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
+
+                        for i in range(0, len(options) - 1):
+                            if i == option:
+                                continue
+                            draw_text(screen, WHITE, options[i] + controls[controls_names[i]], 36, WIDTH / 2,
+                                      HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+
+                        draw_text(screen, GREEN, options[option] + controls[controls_names[option]], 36, WIDTH / 2,
+                                  HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+
+                        pg.display.flip()
+
+                if keystate[pg.K_s]:
+                    if option == len(options) - 1:
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    else:
+                        draw_text(screen, WHITE, options[option] + controls[controls_names[option]], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option += 1
+                    if option > len(options) - 1:
+                        option = len(options) - 1
+
+                    if option == len(options) - 1:
+                        draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1),
+                                  'center')
+                    else:
+                        draw_text(screen, GREEN, options[option] + controls[controls_names[option]], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+
+                    pg.display.flip()
+                    select_snd.play()
+
+                if keystate[pg.K_w]:
+                    if option == len(options) - 1:
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2,
+                                  HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    else:
+                        draw_text(screen, WHITE, options[option] + controls[controls_names[option]], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    option -= 1
+                    if option < 0:
+                        option = 0
+                    draw_text(screen, GREEN, options[option] + controls[controls_names[option]], 36, WIDTH / 2,
+                              HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    pg.display.flip()
+                    select_snd.play()
+
 def show_options():
     global volume
-    options = ['Громкость: ', 'Сбросить рекорды', 'Назад']
+    options = ['Громкость: ', 'Управление','Сбросить рекорды', 'Назад']
     surf = pg.Surface((WIDTH, HEIGHT))
     surf.fill(BLACK)
     surf_rect = surf.get_rect()
@@ -532,9 +696,39 @@ def show_options():
                 if keystate[pg.K_SPACE]:
                     select_snd.play()
                     match options[option]:
+                        case 'Управление':
+                            show_controls()
+                            screen.blit(surf, surf_rect)
+                            draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                            draw_text(screen, GREEN, options[len(options) - 1], 36, WIDTH / 2,
+                                      HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
+                            for i in range(0, len(options) - 1):
+                                if options[i] == 'Громкость: ':
+                                    draw_text(screen, WHITE, options[i] + str(volume), 36, WIDTH / 2,
+                                              HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+                                else:
+                                    draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1),
+                                              'center')
+
+                            pg.display.flip()
+                            option = len(options) - 1
+
                         case 'Сбросить рекорды':
-                            pass
+
+                            save_data = {
+                                'data': []
+                            }
+
+                            with open(save_path, 'w') as save_file:
+                                json.dump(save_data, save_file)
+
+                            with open(save_path) as save_file:
+                                save_data = json.load(save_file)
+
                         case 'Назад':
+                            config['volume'] = volume
+                            with open(config_path, 'w') as config_file:
+                                json.dump(config, config_file)
                             waiting = False
 
                 if keystate[pg.K_a] and option == 0:
@@ -581,7 +775,10 @@ def show_options():
                     select_snd.play()
 
                 if keystate[pg.K_w]:
-                    draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    if options[option] == 'Громкость: ':
+                        draw_text(screen, WHITE, options[option] + str(volume), 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    else:
+                        draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
                     option -= 1
                     if option < 0:
                         option = 0
@@ -592,8 +789,49 @@ def show_options():
                     pg.display.flip()
                     select_snd.play()
 
+def show_rules():
+    rules = ['Правила игры',
+             'Игрок управляет космическим судном. Противниками',
+             'выступают вражеские космические корабли и астероиды.',
+             'Игрок может управлять положением персонажа при по-',
+             'мощи клавиш на клавиатуре (по умолчанию W, A, S, D).',
+             'Задача игрока - уклоняться от вражеских атак и унич-',
+             'тожать врагов при помощи стрельбы. Целью игры является',
+             'набор максимального количества очков. За каждого',
+             'убитого врага начисляется 20 очков. На месте гибели',
+             'врагов могут появляться аптечки и усиления. Изначаль-',
+             'ное количество ОЗ игрока равно 100. Аптечки восстанав-',
+             'ливают ОЗ при подборе, усиления увеличивают урон кос-',
+             'мического корабля игрока. Количество ОЗ противников',
+             'зависит от набранных игроком очков.'
+    ]
+
+    surf = pg.Surface((WIDTH, HEIGHT))
+    surf.fill(BLACK)
+    surf_rect = surf.get_rect()
+    screen.blit(surf, surf_rect)
+    draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+    for i in range(len(rules)):
+        draw_text(screen, WHITE, rules[i], 24, WIDTH / 2, HEIGHT / 4 + 48 + 24 * (i + 1), 'center')
+
+    draw_text(screen, GREEN, "Назад", 36, WIDTH / 2, HEIGHT - 100, 'center')
+
+    pg.display.flip()
+
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
+            if event.type == pg.KEYDOWN:
+                keystate = pg.key.get_pressed()
+                if keystate[pg.K_SPACE]:
+                    select_snd.play()
+                    waiting = False
+
 def show_menu():
-    options = ['Играть', 'Настройки', 'Выход']
+    options = ['Играть', 'Настройки', 'Правила', 'Выход']
     surf = pg.Surface((WIDTH, HEIGHT))
     surf.fill(BLACK)
     surf_rect = surf.get_rect()
@@ -615,10 +853,11 @@ def show_menu():
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
+                    select_snd.play()
                     match options[option]:
                         case 'Играть':
-                            select_snd.play()
                             waiting = False
+
                         case 'Настройки':
                             show_options()
                             screen.blit(surf, surf_rect)
@@ -626,13 +865,20 @@ def show_menu():
                             draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
                             draw_text(screen, GREEN, options[0], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50, 'center')
                             for i in range(1, len(options)):
-                                draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1),
-                                          'center')
+                                draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
                             pg.display.flip()
-                            select_snd.play()
+
+                        case 'Правила':
+                            show_rules()
+                            screen.blit(surf, surf_rect)
+                            option = 0
+                            draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
+                            draw_text(screen, GREEN, options[0], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50, 'center')
+                            for i in range(1, len(options)):
+                                draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+                            pg.display.flip()
 
                         case 'Выход':
-                            select_snd.play()
                             waiting = False
                             pg.quit()
 
@@ -668,6 +914,9 @@ while running:
 
         show_menu()
 
+        score = 0
+        powerups = 0
+
         all_sprites = pg.sprite.Group()
         player = Player()
         all_sprites.add(player)
@@ -683,8 +932,6 @@ while running:
         update_master_volume()
 
         build_lvl(lvl4)
-        score = 0
-        powerups = 0
         game_stop = False
 
     clock.tick(FPS)
@@ -771,7 +1018,23 @@ while running:
     all_sprites.draw(screen)
     draw_text(screen, WHITE,  "Счет: " + str(score), 52, PLAYZONE_WIDTH + 20, 20, 'topleft')
     draw_text(screen, WHITE, "Урон: " + str(player.dmg), 52, PLAYZONE_WIDTH + 20, 72, 'topleft')
+    draw_text(screen, WHITE, "Рекорды:", 52, PLAYZONE_WIDTH + 20, 124, 'topleft')
+
+    with open(save_path) as save_file:
+        save_data = json.load(save_file)
+
+    items = len(save_data['data'])
+    if items > 12:
+        items = 12
+    for i in range(items):
+        record_name = save_data['data'][i]['name']
+        record_score = save_data['data'][i]['score']
+        spacing = 21 - len(record_name) - len(str(record_score))
+        draw_text(screen, WHITE, record_name + '.' * spacing + str(record_score), 36, PLAYZONE_WIDTH + 20, 176 + 36 * i, 'topleft')
+
     draw_text(screen, WHITE, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98, 'topleft')
+
+
     draw_health_bar(screen, PLAYZONE_WIDTH + 20, HEIGHT - 46, player.health)
     pg.display.flip()
 
