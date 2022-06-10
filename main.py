@@ -168,6 +168,7 @@ data_elem = {
 name = ''
 score = 0
 powerups = 0
+type_symbols = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "z", "x", "c", "v", "b", "n", "m", "й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "ё"}
 
 with open(config_path) as config_file:
     config = json.load(config_file)
@@ -521,7 +522,7 @@ def show_save():
                 elif keystate[pg.K_BACKSPACE]:
                     select_snd.play()
                     name = name[:-1]
-                elif len(name) < 8:
+                elif len(name) < 8 and event.unicode in type_symbols:
                     select_snd.play()
                     name += event.unicode
 
