@@ -1,1 +1,1 @@
-{"data": [{"name": "Rakushka", "score": 10840}, {"name": "asteroid", "score": 2620}, {"name": "kryt", "score": 1280}, {"name": "Rakushka", "score": 1140}, {"name": "test", "score": 1060}, {"name": "tetst2", "score": 1060}, {"name": "Rakushka", "score": 680}, {"name": "lox", "score": 160}, {"name": "minilox", "score": 160}, {"name": "superlox", "score": 60}, {"name": "score", "score": 60}]}
+{"data": []}

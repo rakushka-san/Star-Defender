@@ -1,4 +1,4 @@
-import time
+import sys
 
 import pygame as pg
 import random
@@ -23,7 +23,7 @@ clock = pg.time.Clock()
 
 game_folder = os.path.dirname(__file__)
 assets_folder = os.path.join(game_folder, 'assets')
-user_folder =  os.path.join(game_folder, 'user')
+user_folder = os.path.join(game_folder, 'user')
 img_folder = os.path.join(assets_folder, 'img')
 fonts_folder = os.path.join(assets_folder, 'fonts')
 snd_folder = os.path.join(assets_folder, 'snd')
@@ -66,7 +66,7 @@ enemy_img = []
 for i in range(3):
     enemy_group = []
     for j in range(3):
-        enemy_group.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'enemy' + str(i) + str(j) +'.png')).convert(), (50, 50)))
+        enemy_group.append(pg.transform.scale(pg.image.load(os.path.join(img_folder, 'enemy' + str(i) + str(j) + '.png')).convert(), (50, 50)))
 
     enemy_img.append(enemy_group)
 
@@ -149,16 +149,16 @@ lvl10 = '111111111n' \
 
 lvls = []
 lvls.append(lvl0)
-# lvls.append(lvl1)
-# lvls.append(lvl2)
-# lvls.append(lvl3)
-# lvls.append(lvl4)
-# lvls.append(lvl5)
-# lvls.append(lvl6)
-# lvls.append(lvl7)
-# lvls.append(lvl8)
-# lvls.append(lvl9)
-# lvls.append(lvl10)
+lvls.append(lvl1)
+lvls.append(lvl2)
+lvls.append(lvl3)
+lvls.append(lvl4)
+lvls.append(lvl5)
+lvls.append(lvl6)
+lvls.append(lvl7)
+lvls.append(lvl8)
+lvls.append(lvl9)
+lvls.append(lvl10)
 
 data_elem = {
     'name': 'player',
@@ -179,6 +179,7 @@ volume = config['volume']
 controls = config['controls']
 
 ##########################################
+
 
 class Player(pg.sprite.Sprite):
     def __init__(self):
@@ -243,7 +244,6 @@ class Player(pg.sprite.Sprite):
             elif player.dmg >= 100:
                 state = 1
 
-
             bullet = Bullet(self.rect.centerx, self.rect.top, state)
             all_sprites.add(bullet)
             bullets.add(bullet)
@@ -286,6 +286,7 @@ class Enemy(pg.sprite.Sprite):
                 ebullets.add(ebullet)
                 shoot_snd.play()
 
+
 class Asteroid(pg.sprite.Sprite):
     def __init__(self, k):
         pg.sprite.Sprite.__init__(self)
@@ -309,6 +310,7 @@ class Asteroid(pg.sprite.Sprite):
         if self.rect.top > HEIGHT:
             self.kill()
 
+
 class Drop(pg.sprite.Sprite):
     def __init__(self, x, y):
         pg.sprite.Sprite.__init__(self)
@@ -323,6 +325,7 @@ class Drop(pg.sprite.Sprite):
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
             self.kill()
+
 
 class Bullet(pg.sprite.Sprite):
     def __init__(self, x, y, state):
@@ -339,6 +342,7 @@ class Bullet(pg.sprite.Sprite):
         if self.rect.bottom < 0:
             self.kill()
 
+
 class EnemyBullet(pg.sprite.Sprite):
     def __init__(self, x, y):
         pg.sprite.Sprite.__init__(self)
@@ -353,6 +357,7 @@ class EnemyBullet(pg.sprite.Sprite):
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT:
             self.kill()
+
 
 class Explosion(pg.sprite.Sprite):
     def __init__(self, center, size):
@@ -378,6 +383,9 @@ class Explosion(pg.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = center
 
+##########################################
+
+
 def draw_text(surf, color, text, size, x, y, pos):
     font = pg.font.Font(os.path.join(fonts_folder, 'OutlinePixel7.ttf'), size)
     text_surface = font.render(text, True, color)
@@ -388,29 +396,33 @@ def draw_text(surf, color, text, size, x, y, pos):
         text_rect.center = (x, y)
     surf.blit(text_surface, text_rect)
 
+
 def new_asteroid(k):
     m = Asteroid(k)
     all_sprites.add(m)
     mobs.add(m)
+
 
 def new_enemy(x, y, type, color):
     e = Enemy(x, y, type, color)
     all_sprites.add(e)
     mobs.add(e)
 
-def draw_health_bar(surf, x, y, pct):
-    if pct < 0:
-        pct = 0
+
+def draw_health_bar(surf, x, y, health):
+    if health < 0:
+        health = 0
     color = (0, 200, 0)
-    if pct <= 30:
+    if health <= 30:
         color = (196, 0, 5)
-    BAR_LENGTH = 520
-    BAR_HEIGHT = 26
-    fill = (pct / 100) * BAR_LENGTH
-    outline_rect = pg.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
-    fill_rect = pg.Rect(x, y, fill, BAR_HEIGHT)
+    length = 520
+    height = 26
+    fill = (health / 100) * length
+    outline_rect = pg.Rect(x, y, length, height)
+    fill_rect = pg.Rect(x, y, fill, height)
     pg.draw.rect(surf, color, fill_rect)
     pg.draw.rect(surf, color, outline_rect, 2)
+
 
 def build_lvl(lvl):
     x = 25
@@ -426,6 +438,7 @@ def build_lvl(lvl):
             x = 25
             type = random.randrange(0, 3)
             color = (color + 1) % 3
+
 
 def asteroid_lvl():
     count = 0
@@ -449,6 +462,7 @@ def update_master_volume():
     for i in range(len(expl_sounds)):
         expl_sounds[i].set_volume(expl_volume * volume/100)
     pg.mixer.music.set_volume(volume/100)
+
 
 def show_save():
     global name
@@ -474,6 +488,8 @@ def show_save():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
@@ -531,6 +547,8 @@ def show_gameover():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
@@ -559,6 +577,7 @@ def show_gameover():
                     pg.display.flip()
                     select_snd.play()
 
+
 def show_controls():
     options = ['Вверх: ', 'Вниз: ', 'Влево: ', 'Вправо: ', 'Назад']
     controls_names = ['up', 'down', 'left', 'right']
@@ -581,6 +600,8 @@ def show_controls():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
@@ -611,6 +632,8 @@ def show_controls():
                             for event in pg.event.get():
                                 if event.type == pg.QUIT:
                                     pg.quit()
+                                    sys.exit(0)
+
                                 if event.type == pg.KEYDOWN:
                                     controls[controls_names[option]] = pg.key.name(event.key)
                                     waiting_key = False
@@ -667,9 +690,10 @@ def show_controls():
                     pg.display.flip()
                     select_snd.play()
 
+
 def show_options():
     global volume
-    options = ['Громкость: ', 'Управление','Сбросить рекорды', 'Назад']
+    options = ['Громкость: ', 'Управление', 'Сбросить рекорды', 'Назад']
     surf = pg.Surface((WIDTH, HEIGHT))
     surf.fill(BLACK)
     surf_rect = surf.get_rect()
@@ -678,7 +702,7 @@ def show_options():
     draw_text(screen, GREEN, options[len(options) - 1], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (len(options)), 'center')
     for i in range(0, len(options) - 1):
         if options[i] == 'Громкость: ':
-            draw_text(screen, WHITE, options[i] + str(volume) , 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
+            draw_text(screen, WHITE, options[i] + str(volume), 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
         else:
             draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
 
@@ -691,6 +715,8 @@ def show_options():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
@@ -740,7 +766,7 @@ def show_options():
 
                     screen.blit(surf, surf_rect)
                     draw_text(screen, WHITE, "Star Defender", 64, WIDTH / 2, HEIGHT / 4, 'center')
-                    draw_text(screen, GREEN, options[option] + str(volume) , 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
+                    draw_text(screen, GREEN, options[option] + str(volume), 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
                     for i in range(1, len(options)):
                         draw_text(screen, WHITE, options[i], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (i + 1), 'center')
                     pg.display.flip()
@@ -789,6 +815,7 @@ def show_options():
                     pg.display.flip()
                     select_snd.play()
 
+
 def show_rules():
     rules = ['Правила игры',
              'Игрок управляет космическим судном. Противниками',
@@ -803,8 +830,7 @@ def show_rules():
              'ное количество ОЗ игрока равно 100. Аптечки восстанав-',
              'ливают ОЗ при подборе, усиления увеличивают урон кос-',
              'мического корабля игрока. Количество ОЗ противников',
-             'зависит от набранных игроком очков.'
-    ]
+             'зависит от набранных игроком очков.']
 
     surf = pg.Surface((WIDTH, HEIGHT))
     surf.fill(BLACK)
@@ -824,11 +850,14 @@ def show_rules():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
                     select_snd.play()
                     waiting = False
+
 
 def show_menu():
     options = ['Играть', 'Настройки', 'Правила', 'Выход']
@@ -850,6 +879,8 @@ def show_menu():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 pg.quit()
+                sys.exit(0)
+
             if event.type == pg.KEYDOWN:
                 keystate = pg.key.get_pressed()
                 if keystate[pg.K_SPACE]:
@@ -881,6 +912,8 @@ def show_menu():
                         case 'Выход':
                             waiting = False
                             pg.quit()
+                            sys.exit(0)
+
 
                 if keystate[pg.K_s]:
                     draw_text(screen, WHITE, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
@@ -899,6 +932,8 @@ def show_menu():
                     draw_text(screen, GREEN, options[option], 36, WIDTH / 2, HEIGHT / 4 + 100 + 50 * (option + 1), 'center')
                     pg.display.flip()
                     select_snd.play()
+
+##########################################
 
 
 update_master_volume()
@@ -1009,7 +1044,6 @@ while running:
         if event.type == pg.QUIT:
             running = False
 
-
     screen.fill(BLACK)
     bg_rect.centery += 1
     if bg_rect.centery == HEIGHT:
@@ -1033,7 +1067,6 @@ while running:
         draw_text(screen, WHITE, record_name + '.' * spacing + str(record_score), 36, PLAYZONE_WIDTH + 20, 176 + 36 * i, 'topleft')
 
     draw_text(screen, WHITE, "Здоровье:", 52, PLAYZONE_WIDTH + 20, HEIGHT - 98, 'topleft')
-
 
     draw_health_bar(screen, PLAYZONE_WIDTH + 20, HEIGHT - 46, player.health)
     pg.display.flip()
